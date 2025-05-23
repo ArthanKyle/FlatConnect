@@ -1,0 +1,2 @@
+# flatconnect
+FlatConnect is a Laravel Livewire-based client management system designed for ISP or network administrators to monitor and control connected clients on a TP-Link Omada-managed network. It integrates with TP-Link devices to fetch real-time client data, allowing admins to view client details such as hostname, MAC address, IP, repeater association, status (blocked or connected), and next payment due date.
