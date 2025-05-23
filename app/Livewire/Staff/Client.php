@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Auth;
 
 class Client extends Component
 {
-    public $clients = []; // array of clients loaded from DB for UI
+    public $clients = [];
     public $paginatedClients = [];
     public $currentPage = 1;
     public $perPage = 15;
@@ -28,7 +28,6 @@ class Client extends Component
 
     public function mount(ClientDiscoveryService $discoveryService)
     {
-        // On mount, fetch new clients from discovery API and merge into DB
         $this->fetchAndStoreClients($discoveryService);
         $this->loadClientsFromDb();
     }
@@ -45,7 +44,6 @@ class Client extends Component
 
             if ($existingClient) {
                 $repeaterName = $existingClient->repeater_name;
-                // Only update repeater_name if empty or 'Unknown'
                 if (empty($repeaterName) || $repeaterName === 'Unknown') {
                     $repeaterName = $hostname;
                 }
@@ -54,7 +52,6 @@ class Client extends Component
                     'ip_address' => $client['ip_address'] ?? 'Unknown',
                     'repeater_name' => $repeaterName,
                     'status' => $client['blocked'] ?? false ? 'blocked' : 'active',
-                    // Preserve next_due_date if already set
                     'next_due_date' => $existingClient->next_due_date ?? now()->addDays(30),
                 ]);
             } else {
@@ -96,11 +93,13 @@ class Client extends Component
                 'repeater_name' => $client->repeater_name,
                 'blocked' => $client->status === 'blocked',
                 'next_due_date' => $client->next_due_date ? $client->next_due_date->format('Y-m-d') : null,
-                'next_due_formatted' => $client->next_due_date ? $client->next_due_date->format('Y-m-d') : '-',
+                'next_due_formatted' => $client->status === 'blocked'
+                    ? 'Until payment is fulfilled'
+                    : ($client->next_due_date ? $client->next_due_date->format('Y-m-d') : '-'),
             ];
         })->toArray();
 
-        $this->currentPage = 1; // reset to first page on reload
+        $this->currentPage = 1;
         $this->paginateClients();
     }
 
@@ -126,7 +125,6 @@ class Client extends Component
         $this->paginateClients();
     }
 
-    // Editing
     public function editClient(int $clientId): void
     {
         $client = ClientModel::findOrFail($clientId);
@@ -147,53 +145,46 @@ class Client extends Component
     {
         $client = ClientModel::findOrFail($this->editingClientId);
 
+        $originalRepeater = $client->repeater_name;
+        $originalDueDate = optional($client->next_due_date)->format('Y-m-d');
+
         $client->update([
             'next_due_date' => $this->editNextDueDate,
             'repeater_name' => $this->editRepeaterName,
         ]);
 
+        $details = "Edited client {$client->mac_address}: Repeater name '{$originalRepeater}' → '{$this->editRepeaterName}', Due date '{$originalDueDate}' → '{$this->editNextDueDate}'";
+
         AdminLog::create([
             'action' => 'edit',
             'mac_address' => $client->mac_address,
-            'performed_by' => Auth::id(),
-            'metadata' => [
-                'next_due_date' => $this->editNextDueDate,
-                'repeater_name' => $this->editRepeaterName,
-            ],
+            'details' => $details,
         ]);
 
         $this->cancelEdit();
         $this->loadClientsFromDb();
     }
 
-    // Blocking/Unblocking
     public function block(string $macAddress, ClientDiscoveryService $discoveryService): void
     {
         if ($discoveryService->blockClient($macAddress)) {
-            // Update DB record status to 'blocked'
             $client = ClientModel::where('mac_address', $macAddress)->first();
             if ($client) {
                 $client->status = 'blocked';
                 $client->save();
+
+                AdminLog::create([
+                    'action' => 'block',
+                    'mac_address' => $macAddress,
+                    'details' => "Blocked client {$macAddress}: Next due date suspended until payment is fulfilled",
+                ]);
             }
 
             session()->flash('success', "Client $macAddress blocked successfully.");
-            AdminLog::create([
-                'action' => 'block',
-                'mac_address' => $macAddress,
-                'performed_by' => Auth::id(),
-            ]);
 
-            // Update clients array immediately to reflect the change in UI
-            foreach ($this->clients as &$client) {
-                if ($client['mac_address'] === $macAddress) {
-                    $client['blocked'] = true;
-                    break;
-                }
-            }
-            unset($client);
+            // Refresh client list to update UI properly
+            $this->loadClientsFromDb();
 
-            $this->paginateClients();
         } else {
             session()->flash('error', "Failed to block client $macAddress.");
         }
@@ -202,30 +193,24 @@ class Client extends Component
     public function unblock(string $macAddress, ClientDiscoveryService $discoveryService): void
     {
         if ($discoveryService->unblockClient($macAddress)) {
-            // Update DB record status to 'active'
             $client = ClientModel::where('mac_address', $macAddress)->first();
             if ($client) {
                 $client->status = 'active';
+                $client->next_due_date = now()->addDays(30);
                 $client->save();
+
+                AdminLog::create([
+                    'action' => 'unblock',
+                    'mac_address' => $macAddress,
+                    'details' => "Unblocked client {$macAddress}: Access restored, next due date reset to " . $client->next_due_date->format('Y-m-d'),
+                ]);
             }
 
             session()->flash('success', "Client $macAddress unblocked successfully.");
-            AdminLog::create([
-                'action' => 'unblock',
-                'mac_address' => $macAddress,
-                'performed_by' => Auth::id(),
-            ]);
 
-            // Update clients array immediately
-            foreach ($this->clients as &$client) {
-                if ($client['mac_address'] === $macAddress) {
-                    $client['blocked'] = false;
-                    break;
-                }
-            }
-            unset($client);
+            // Refresh client list to update UI properly
+            $this->loadClientsFromDb();
 
-            $this->paginateClients();
         } else {
             session()->flash('error', "Failed to unblock client $macAddress.");
         }
