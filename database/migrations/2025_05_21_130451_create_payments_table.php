@@ -12,9 +12,15 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('payments', function (Blueprint $table) {
-            $table->id();
-            $table->timestamps();
-        });
+        $table->id();
+        $table->foreignId('client_id')->constrained()->onDelete('cascade');
+        $table->decimal('amount', 10, 2);
+        $table->string('method'); // 'gcash', 'manual', etc.
+        $table->string('reference')->nullable(); // Transaction ref
+        $table->date('paid_at');
+        $table->timestamps();
+    });
+
     }
 
     /**

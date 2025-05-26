@@ -6,7 +6,7 @@ use Livewire\Component;
 use App\Models\Client as ClientModel;
 use App\Services\Tplink\ClientDiscoveryService;
 use App\Models\AdminLog;
-use Illuminate\Support\Facades\Auth;
+use Carbon\Carbon;
 
 class Client extends Component
 {
@@ -21,10 +21,12 @@ class Client extends Component
     public $editingClientId = null;
     public $editNextDueDate = null;
     public $editRepeaterName = null;
+    public $editFirstName = null;
+    public $editLastName = null;
+    public $editApartmentNumber = null;
+    public $editBuilding = null;
 
-    protected $listeners = [
-        'refreshClients' => 'loadClientsFromDb',
-    ];
+    protected $listeners = ['refreshClients' => 'loadClientsFromDb'];
 
     public function mount(ClientDiscoveryService $discoveryService)
     {
@@ -51,18 +53,44 @@ class Client extends Component
                 $existingClient->update([
                     'ip_address' => $client['ip_address'] ?? 'Unknown',
                     'repeater_name' => $repeaterName,
-                    'status' => $client['blocked'] ?? false ? 'blocked' : 'active',
-                    'next_due_date' => $existingClient->next_due_date ?? now()->addDays(30),
+                    'repeater_status' => 'online',
+                    'enforcement_status' => 'synced',
                 ]);
             } else {
                 ClientModel::create([
                     'mac_address' => $mac,
                     'ip_address' => $client['ip_address'] ?? 'Unknown',
                     'repeater_name' => $hostname,
-                    'status' => $client['blocked'] ?? false ? 'blocked' : 'active',
+                    'block_status' => ($client['blocked'] ?? false) ? 'blocked' : 'unblocked',
+                    'repeater_status' => 'online',
+                    'enforcement_status' => 'synced',
                     'next_due_date' => now()->addDays(30),
                 ]);
             }
+        }
+
+        $this->syncClientStatuses($discovered);
+    }
+
+    protected function syncClientStatuses(array $discoveredClients): void
+    {
+        $discoveredMacs = collect($discoveredClients)->pluck('mac_address')->toArray();
+
+        $offlineClients = ClientModel::whereNotIn('mac_address', $discoveredMacs)
+                                ->where('repeater_status', '!=', 'offline')
+                                ->get();
+
+        foreach ($offlineClients as $client) {
+            $client->update([
+                'repeater_status' => 'offline',
+                'enforcement_status' => 'pending',
+            ]);
+
+            AdminLog::create([
+                'action' => 'Automatic Inactive',
+                'mac_address' => $client->mac_address,
+                'details' => "Client {$client->mac_address} marked inactive automatically (repeater offline).",
+            ]);
         }
     }
 
@@ -79,28 +107,53 @@ class Client extends Component
         }
 
         if ($this->showOnlyBlocked) {
-            $query->where('status', 'blocked');
+            $query->where('block_status', 'blocked');
         }
 
         $allClients = $query->orderBy('repeater_name')->get();
 
         $this->clients = $allClients->map(function ($client) {
+            $nextDueDateFormatted = '-';
+            if ($client->isBlocked()) {
+                $nextDueDateFormatted = 'Until payment is fulfilled';
+            } elseif ($client->next_due_date instanceof Carbon) {
+                $nextDueDateFormatted = $client->next_due_date->format('Y-m-d');
+            } elseif ($client->next_due_date) {
+                try {
+                    $nextDueDateFormatted = Carbon::parse($client->next_due_date)->format('Y-m-d');
+                } catch (\Exception $e) {
+                    $nextDueDateFormatted = '-';
+                }
+            }
+
             return [
                 'id' => $client->id,
+                'fullname' => trim("{$client->first_name} {$client->last_name}"),
                 'mac_address' => $client->mac_address,
                 'ip_address' => $client->ip_address,
                 'hostname' => $client->repeater_name,
                 'repeater_name' => $client->repeater_name,
-                'blocked' => $client->status === 'blocked',
-                'next_due_date' => $client->next_due_date ? $client->next_due_date->format('Y-m-d') : null,
-                'next_due_formatted' => $client->status === 'blocked'
-                    ? 'Until payment is fulfilled'
-                    : ($client->next_due_date ? $client->next_due_date->format('Y-m-d') : '-'),
+                'apartment_number' => $client->apartment_number,
+                'building' => $client->building,
+                'blocked' => $client->isBlocked(),
+                'block_status' => $client->block_status,
+                'repeater_status' => $client->repeater_status,
+                'enforcement_status' => $client->enforcement_status,
+                'last_seen_at' => $client->last_seen_at ? $client->last_seen_at->format('Y-m-d H:i:s') : null,
+                'next_due_date' => $client->next_due_date instanceof Carbon
+                    ? $client->next_due_date->format('Y-m-d')
+                    : null,
+                'next_due_formatted' => $nextDueDateFormatted,
             ];
         })->toArray();
 
         $this->currentPage = 1;
         $this->paginateClients();
+    }
+
+    protected function getTotalPages(): int
+    {
+        return (int) ceil(count($this->clients) / $this->perPage);
     }
 
     protected function paginateClients(): void
@@ -132,6 +185,10 @@ class Client extends Component
         $this->editingClientId = $client->id;
         $this->editNextDueDate = $client->next_due_date ? $client->next_due_date->format('Y-m-d') : null;
         $this->editRepeaterName = $client->repeater_name;
+        $this->editFirstName = $client->first_name;
+        $this->editLastName = $client->last_name;
+        $this->editApartmentNumber = $client->apartment_number;
+        $this->editBuilding = $client->building;
     }
 
     public function cancelEdit(): void
@@ -139,6 +196,10 @@ class Client extends Component
         $this->editingClientId = null;
         $this->editNextDueDate = null;
         $this->editRepeaterName = null;
+        $this->editFirstName = null;
+        $this->editLastName = null;
+        $this->editApartmentNumber = null;
+        $this->editBuilding = null;
     }
 
     public function saveEdit(): void
@@ -151,12 +212,16 @@ class Client extends Component
         $client->update([
             'next_due_date' => $this->editNextDueDate,
             'repeater_name' => $this->editRepeaterName,
+            'first_name' => $this->editFirstName,
+            'last_name' => $this->editLastName,
+            'apartment_number' => $this->editApartmentNumber,
+            'building' => $this->editBuilding,
         ]);
 
         $details = "Edited client {$client->mac_address}: Repeater name '{$originalRepeater}' → '{$this->editRepeaterName}', Due date '{$originalDueDate}' → '{$this->editNextDueDate}'";
 
         AdminLog::create([
-            'action' => 'edit',
+            'action' => 'Edit',
             'mac_address' => $client->mac_address,
             'details' => $details,
         ]);
@@ -170,23 +235,14 @@ class Client extends Component
         if ($discoveryService->blockClient($macAddress)) {
             $client = ClientModel::where('mac_address', $macAddress)->first();
             if ($client) {
-                $client->status = 'blocked';
-                $client->save();
-
+                $client->update(['block_status' => 'blocked']);
                 AdminLog::create([
-                    'action' => 'block',
+                    'action' => 'Block',
                     'mac_address' => $macAddress,
-                    'details' => "Blocked client {$macAddress}: Next due date suspended until payment is fulfilled",
+                    'details' => "Blocked client {$macAddress}: Next due date suspended until payment is fulfilled.",
                 ]);
+                $this->loadClientsFromDb();
             }
-
-            session()->flash('success', "Client $macAddress blocked successfully.");
-
-            // Refresh client list to update UI properly
-            $this->loadClientsFromDb();
-
-        } else {
-            session()->flash('error', "Failed to block client $macAddress.");
         }
     }
 
@@ -195,35 +251,29 @@ class Client extends Component
         if ($discoveryService->unblockClient($macAddress)) {
             $client = ClientModel::where('mac_address', $macAddress)->first();
             if ($client) {
-                $client->status = 'active';
-                $client->next_due_date = now()->addDays(30);
-                $client->save();
-
+                $client->update(['block_status' => 'unblocked']);
                 AdminLog::create([
-                    'action' => 'unblock',
+                    'action' => 'Unblock',
                     'mac_address' => $macAddress,
-                    'details' => "Unblocked client {$macAddress}: Access restored, next due date reset to " . $client->next_due_date->format('Y-m-d'),
+                    'details' => "Unblocked client {$macAddress}: Access restored, next due date reset to " . ($client->next_due_date ? $client->next_due_date->format('Y-m-d') : '-'),
                 ]);
+                $this->loadClientsFromDb();
             }
-
-            session()->flash('success', "Client $macAddress unblocked successfully.");
-
-            // Refresh client list to update UI properly
-            $this->loadClientsFromDb();
-
-        } else {
-            session()->flash('error', "Failed to unblock client $macAddress.");
         }
     }
 
     public function render()
     {
+        $totalPages = $this->getTotalPages();
+
         return view('livewire.staff.client', [
             'clients' => $this->paginatedClients,
             'currentPage' => $this->currentPage,
             'perPage' => $this->perPage,
-            'total' => count($this->clients),
-            'totalPages' => ceil(count($this->clients) / $this->perPage),
+            'totalClients' => count($this->clients),
+            'totalPages' => $totalPages,
+            'showOnlyBlocked' => $this->showOnlyBlocked,
+            'search' => $this->search,
         ])->layout('layouts.app', ['title' => 'Admin Dashboard']);
     }
 }

@@ -34,5 +34,10 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
+    'tplink' => [
+        'username' => env('EAP610_USERNAME'),
+        'password' => md5(env('EAP610_PASSWORD', '')),
+        'base_url' => env('EAP610_BASE_URL'),
+    ],
 
 ];

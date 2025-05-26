@@ -12,7 +12,7 @@ class Client extends Authenticatable implements \Illuminate\Contracts\Auth\MustV
     use HasFactory, Notifiable, MustVerifyEmail;
 
     protected $fillable = [
-        'first_name',
+       'first_name',
         'last_name',
         'email',
         'password',
@@ -21,6 +21,12 @@ class Client extends Authenticatable implements \Illuminate\Contracts\Auth\MustV
         'ip_address',
         'status',
         'next_due_date',
+        'apartment_number',
+        'building',        
+        'last_seen_at', 
+         'block_status',        
+        'repeater_status',    
+        'enforcement_status',     
     ];
 
     protected $hidden = [
@@ -30,6 +36,7 @@ class Client extends Authenticatable implements \Illuminate\Contracts\Auth\MustV
 
     protected $casts = [
         'next_due_date' => 'datetime',
+        'last_seen_at' => 'datetime',
     ];
 
     protected $appends = ['next_due_formatted', 'fullname'];
@@ -37,6 +44,11 @@ class Client extends Authenticatable implements \Illuminate\Contracts\Auth\MustV
     public function payments()
     {
         return $this->hasMany(\App\Models\Payment::class);
+    }
+    
+    public function getStatusDisplayAttribute()
+    {
+        return $this->status;
     }
 
     public function getFullnameAttribute()
@@ -47,7 +59,12 @@ class Client extends Authenticatable implements \Illuminate\Contracts\Auth\MustV
     public function getNextDueFormattedAttribute(): string
     {
         return $this->next_due_date
-            ? \Carbon\Carbon::parse($this->next_due_date)->format('F j, Y')
+            ? $this->next_due_date->format('F j, Y')
             : 'N/A';
+    }
+
+    public function isBlocked(): bool
+    {
+        return $this->block_status === 'blocked';
     }
 }

@@ -1,159 +1,188 @@
-<div class="flex">
+<div class="flex flex-col md:flex-row min-h-screen">
     <!-- Include Navbar -->
     <livewire:components.navbar />
 
     <!-- Main Content -->
-    <div class="flex-1 p-6">
+    <div class="flex-1 p-4 md:p-6 bg-gray-50 overflow-x-hidden">
+
         <!-- Welcome Message -->
-        <div class="mb-6">
+        <div class="mb-4 md:mb-6">
             <h1 class="text-2xl font-bold text-gray-800">Welcome, {{ Auth::user()->name }}!</h1>
         </div>
 
-        <div class="p-4">
-            <div class="flex items-center mb-4 space-x-4">
+        <div>
+            <div class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
                 <input
                     id="instantClientSearch"
-                    type="search"
-                    placeholder="Search by repeater name or MAC"
-                    class="border rounded px-3 py-2 w-64"
+                    type="text"
+                    wire:model.debounce.500ms="search"
+                    placeholder="Search repeater or MAC..."
+                    class="border px-3 py-2 rounded w-full sm:w-72"
                 />
-
-                <label class="flex items-center space-x-2">
-                    <input type="checkbox" id="filterBlockedCheckbox" class="form-checkbox" />
+                <label class="inline-flex items-center space-x-2 text-gray-700">
+                    <input id="filterBlockedCheckbox" type="checkbox" wire:model="showOnlyBlocked" class="form-checkbox" />
                     <span>Show Only Blocked</span>
                 </label>
             </div>
 
-            <table id="clientTable" class="min-w-full border-collapse border border-gray-300">
-                <thead>
-                    <tr class="bg-gray-800 text-white">
-                        <th class="border border-gray-300 px-4 py-2">Client's Name</th>
-                        <th class="border border-gray-300 px-4 py-2">Repeater Name</th>
-                        <th class="border border-gray-300 px-4 py-2">MAC Address</th>
-                        <th class="border border-gray-300 px-4 py-2">IP Address</th>
-                        <th class="border border-gray-300 px-4 py-2">Status</th>
-                        <th class="border border-gray-300 px-4 py-2">Next Due Date</th>
-                        <th class="border border-gray-300 px-4 py-2">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach ($clients as $client)
-                        <tr class="{{ $client['blocked'] ? 'bg-red-100' : '' }}">
-                            <td class="border border-gray-300 px-4 py-2">{{ $client['fullname'] ?? '-' }}</td>
-                            <td class="border border-gray-300 px-4 py-2">
-                                @if ($editingClientId === $client['id'])
-                                    <input
-                                        type="text"
-                                        wire:model.defer="editRepeaterName"
-                                        class="border rounded px-2 py-1 w-full"
-                                    />
-                                @else
-                                    {{ $client['repeater_name'] ?? '-' }}
-                                @endif
-                            </td>
-                            <td class="border border-gray-300 px-4 py-2">{{ $client['mac_address'] }}</td>
-                            <td class="border border-gray-300 px-4 py-2">{{ $client['ip_address'] }}</td>
-                            <td class="border border-gray-300 px-4 py-2">
-                                {{ $client['blocked'] ? 'Blocked' : 'Connected' }}
-                            </td>
-                            <td class="border border-gray-300 px-4 py-2">
-                                @if ($editingClientId === $client['id'])
-                                    <input
-                                        type="date"
-                                        wire:model.defer="editNextDueDate"
-                                        class="border rounded px-2 py-1"
-                                    />
-                                @else
-                                    {{ $client['next_due_formatted'] ?? '-' }}
-                                @endif
-                            </td>
-                            <td class="border border-gray-300 px-4 py-2 space-x-2">
-                                @if ($editingClientId === $client['id'])
-                                    <button
-                                        wire:click="saveEdit"
-                                        class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded"
-                                    >Save</button>
-                                    <button
-                                        wire:click="cancelEdit"
-                                        class="bg-gray-400 hover:bg-gray-500 text-white px-3 py-1 rounded"
-                                    >Cancel</button>
-                                @else
-                                    <button
-                                        wire:click="editClient({{ $client['id'] }})"
-                                        class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded"
-                                    >Edit</button>
+            @if (session()->has('success'))
+                <div class="bg-green-100 text-green-800 p-2 mb-2 rounded">{{ session('success') }}</div>
+            @endif
+            @if (session()->has('error'))
+                <div class="bg-red-100 text-red-800 p-2 mb-2 rounded">{{ session('error') }}</div>
+            @endif
 
-                                    @if ($client['blocked'])
-                                        <button
-                                            wire:click="unblock('{{ $client['mac_address'] }}')"
-                                            wire:loading.attr="disabled"
-                                            wire:target="unblock('{{ $client['mac_address'] }}')"
-                                            class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded"
-                                        >Unblock</button>
+            <!-- Responsive table wrapper -->
+            <div class="overflow-x-auto border border-gray-300 rounded">
+                <table id="clientTable" class="min-w-[900px] w-full border-collapse border border-gray-300">
+                    <thead>
+                        <tr class="bg-gray-800 text-white whitespace-nowrap">
+                            <th class="border border-gray-300 px-4 py-2 text-left">Client Name</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">Building</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">Apartment</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">Repeater's Name</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">MAC Address</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">IP Address</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">Block Status</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">Enforcement Status</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">Next Due Date</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">Status</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach ($clients as $client)
+                        <tr class="bg-white border border-black whitespace-nowrap">
+                            <td class="border border-black px-4 py-2">{{ $client['fullname'] }}</td>
+                            <td class="border border-black px-4 py-2">{{ $client['building'] }}</td>
+                            <td class="border border-black px-4 py-2">{{ $client['apartment_number'] }}</td>
+                            <td class="border border-black px-4 py-2">{{ $client['repeater_name'] }}</td>
+                            <td class="border border-black px-4 py-2">{{ $client['mac_address'] }}</td>
+                            <td class="border border-black px-4 py-2">{{ $client['ip_address'] }}</td>
+                            
+                            <td class="border border-black px-4 py-2">
+                                @if ($client['block_status'] === 'blocked')
+                                    <span class="text-red-600 font-bold">Blocked</span>
+                                @elseif ($client['block_status'] === 'pending_block')
+                                    <span class="text-yellow-600">Pending Block</span>
+                                @else
+                                    <span class="text-green-600">Unblocked</span>
+                                @endif
+                            </td>
+                            <td class="border border-black px-4 py-2">{{ ucfirst($client['enforcement_status']) }}</td>
+                            <td class="border border-black px-4 py-2">
+                                {{ !empty($client['next_due_date']) ? \Carbon\Carbon::parse($client['next_due_date'])->format('F j, Y') : '-' }}
+                            </td>
+
+                            <td class="border border-black px-4 py-2">
+                                @if ($client['blocked'])
+                                    <span class="inline-block px-3 py-1 rounded text-xs font-bold bg-red-200 text-red-800">Blocked</span>
+                                @else
+                                    @if ($client['repeater_status'] === 'offline')
+                                        <span class="inline-block px-3 py-1 rounded text-xs font-bold bg-gray-200 text-gray-700">Offline</span>
                                     @else
-                                        <button
-                                            wire:click="block('{{ $client['mac_address'] }}')"
-                                            wire:loading.attr="disabled"
-                                            wire:target="block('{{ $client['mac_address'] }}')"
-                                            class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded"
-                                        >Block</button>
+                                        <span class="inline-block px-3 py-1 rounded text-xs font-bold bg-green-200 text-green-800">Connected</span>
                                     @endif
                                 @endif
+                            </td>
+                            <td class="border border-black px-4 py-2 space-x-1 whitespace-normal">
+                                @if ($client['block_status'] !== 'blocked')
+                                    <button wire:click="block('{{ $client['mac_address'] }}')" class="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs">Block</button>
+                                @else
+                                    <button wire:click="unblock('{{ $client['mac_address'] }}')" class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs">Unblock</button>
+                                @endif
+                                <button wire:click="editClient({{ $client['id'] }})" class="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs">Edit</button>
                             </td>
                         </tr>
                     @endforeach
 
-                    <tr id="noClientsFallback" style="display:none;">
-                        <td colspan="7" class="text-center p-4 text-gray-500 italic">No clients found matching your criteria.</td>
+                    <!-- No clients found row -->
+                    <tr id="noClientsRow" style="display:none;">
+                        <td colspan="11" class="text-center text-gray-500 italic py-4">
+                            No clients found matching your criteria.
+                        </td>
                     </tr>
                 </tbody>
-            </table>
-
-            <div class="mt-4 flex justify-between items-center">
-                <div>
-                    Showing
-                    {{ ($currentPage - 1) * $perPage + 1 }}
-                    to
-                    {{ min($currentPage * $perPage, $total) }}
-                    of
-                    {{ $total }}
-                    clients
-                </div>
-
-                <div class="space-x-2">
-                    @php
-                        $totalPages = ceil($total / $perPage);
-                    @endphp
-
-                    @for ($page = 1; $page <= $totalPages; $page++)
-                        <button
-                            wire:click="gotoPage({{ $page }})"
-                            class="px-3 py-1 rounded {{ $page === $currentPage ? 'bg-blue-600 text-white' : 'bg-gray-200' }}"
-                        >
-                            {{ $page }}
-                        </button>
-                    @endfor
-                </div>
+                </table>
             </div>
+
+            {{-- Pagination --}}
+            <div class="mt-4 flex flex-wrap justify-start gap-2">
+                @for ($i = 1; $i <= $totalPages; $i++)
+                    <button wire:click="gotoPage({{ $i }})"
+                        class="px-3 py-1 rounded {{ $currentPage === $i ? 'bg-blue-600 text-white' : 'bg-gray-200' }}">
+                        {{ $i }}
+                    </button>
+                @endfor
+            </div>
+
+            {{-- Edit Modal (simple inline version) --}}
+            @if ($editingClientId)
+                <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+                    <div class="bg-white p-6 rounded shadow max-w-lg w-full">
+                        <h2 class="text-xl font-bold mb-4">Edit Client</h2>
+
+                        <label class="block mb-2">
+                            Repeater Name:
+                            <input type="text" wire:model.defer="editRepeaterName" class="border p-1 w-full" />
+                        </label>
+
+                        <label class="block mb-2">
+                            First Name:
+                            <input type="text" wire:model.defer="editFirstName" class="border p-1 w-full" />
+                        </label>
+
+                        <label class="block mb-2">
+                            Last Name:
+                            <input type="text" wire:model.defer="editLastName" class="border p-1 w-full" />
+                        </label>
+
+                        <label class="block mb-2">
+                            Apartment Number:
+                            <input type="text" wire:model.defer="editApartmentNumber" class="border p-1 w-full" />
+                        </label>
+
+                        <label class="block mb-2">
+                            Building:
+                            <input type="text" wire:model.defer="editBuilding" class="border p-1 w-full" />
+                        </label>
+
+                        <label class="block mb-4">
+                            Next Due Date:
+                            <input type="date" wire:model.defer="editNextDueDate" class="border p-1 w-full" />
+                        </label>
+
+                        <div class="flex justify-end space-x-2">
+                            <button wire:click="cancelEdit" class="px-4 py-2 bg-gray-300 rounded">Cancel</button>
+                            <button wire:click="saveEdit" class="px-4 py-2 bg-blue-600 text-white rounded">Save</button>
+                        </div>
+                    </div>
+                </div>
+            @endif
         </div>
     </div>
 </div>
 
+
+<!-- JS: Search & Filter -->
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const searchInput = document.getElementById('instantClientSearch');
         const blockedCheckbox = document.getElementById('filterBlockedCheckbox');
         const table = document.getElementById('clientTable');
-        const rows = table.querySelectorAll('tbody tr:not(#noClientsFallback)'); // exclude fallback row
 
         function filterRows() {
             const query = searchInput.value.toLowerCase();
             const showOnlyBlocked = blockedCheckbox.checked;
             let visibleCount = 0;
 
-            rows.forEach(row => {
+            table.querySelectorAll('tbody tr').forEach(row => {
+                // Skip the "noClientsRow" itself
+                if (row.id === 'noClientsRow') return;
+
                 const text = row.textContent.toLowerCase();
-                const isBlocked = row.classList.contains('bg-red-100');
+                // Check for blocked class added in row for filtering
+                const isBlocked = row.classList.contains('blocked-row');
 
                 const matchesSearch = text.includes(query);
                 const matchesBlocked = showOnlyBlocked ? isBlocked : true;
@@ -166,15 +195,16 @@
                 }
             });
 
-            // toggle fallback row
-            const fallback = document.getElementById('noClientsFallback');
-            if (fallback) {
-                fallback.style.display = visibleCount === 0 ? '' : 'none';
-            }
+            // Show or hide the "No clients found" row
+            const noClientsRow = document.getElementById('noClientsRow');
+            noClientsRow.style.display = visibleCount === 0 ? '' : 'none';
         }
 
         searchInput.addEventListener('input', filterRows);
         blockedCheckbox.addEventListener('change', filterRows);
+
+        // Also run filter every 10 seconds to sync with Livewire poll updates
+        setInterval(filterRows, 10000);
 
         filterRows();
     });

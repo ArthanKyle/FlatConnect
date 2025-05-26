@@ -5,16 +5,28 @@ namespace App\Services\Tplink;
 use GuzzleHttp\Cookie\CookieJar;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use App\Models\Client;
 
 class ClientDiscoveryService
 {
-    protected string $baseUrl = 'http://192.168.1.11';
+    protected string $baseUrl;
+    protected string $username;
+    protected string $password;
+    protected array $excludedMacs;
     protected CookieJar $cookieJar;
 
     public function __construct()
     {
+        $this->baseUrl = config('services.tplink.base_url');
+        $this->username = config('services.tplink.username');
+        $this->password = config('services.tplink.password');
         $this->cookieJar = new CookieJar();
+
+        $this->excludedMacs = collect(explode(' ', env('EXCLUDED_MACS', '')))
+            ->map(fn ($mac) => strtoupper(trim($mac)))
+            ->filter()
+            ->toArray();
     }
 
     public function login(): bool
@@ -34,17 +46,17 @@ class ClientDiscoveryService
         ])
         ->asForm()
         ->post($this->baseUrl . '/', [
-            'username' => 'AdminExistentialCrisis',
-            'password' => '66E652DD4948E20796A7B37C64FC0079',
+            'username' => $this->username,
+            'password' => $this->password,
         ]);
 
         if ($response->successful()) {
             Log::info('Login successful.');
             return true;
-        } else {
-            Log::error('Login failed with status: ' . $response->status());
-            return false;
         }
+
+        Log::error('Login failed with status: ' . $response->status());
+        return false;
     }
 
     public function fetchClients(): array
@@ -67,10 +79,6 @@ class ClientDiscoveryService
             return [];
         }
 
-        $excludedMacs = [
-            '8C-B8-7E-D4-52-01', // Your PC MAC
-        ];
-
         $allClients = collect(
             array_merge(
                 $responses['user']['data'] ?? [],
@@ -83,9 +91,9 @@ class ClientDiscoveryService
             ->map(fn($mac) => strtoupper($mac))
             ->toArray();
 
-        return $allClients->map(function ($client) use ($blockedMacs, $excludedMacs) {
+        return $allClients->map(function ($client) use ($blockedMacs) {
             $mac = strtoupper($client['MAC'] ?? '');
-            if (!$mac || in_array($mac, $excludedMacs)) return null;
+            if (!$mac || in_array($mac, $this->excludedMacs)) return null;
 
             $ip = $client['IP'] ?? 'Unknown';
             $hostname = $client['hostname'] ?? 'Unknown';
@@ -99,13 +107,13 @@ class ClientDiscoveryService
                     'mac_address' => $mac,
                     'ip_address' => $ip,
                     'repeater_name' => $hostname,
-                    'status' => $status,
+                    'payment_status' => $status,
                     'next_due_date' => now()->addDays(30),
                 ]);
             } else {
                 $updateData = [
                     'ip_address' => $ip,
-                    'status' => $status,
+                    'payment_status' => $status,
                     'next_due_date' => $existing->next_due_date ?? now()->addDays(30),
                 ];
 

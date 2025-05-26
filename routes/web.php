@@ -24,6 +24,6 @@ Route::middleware(['auth:staff'])->group(function () {
     Route::get('/staff/settings', StaffSettings::class)->name('staff.settings');
 });
 
-Route::middleware(['auth:client', EnsureClientEmailIsVerified::class])->group(function () {
+Route::middleware(['auth:client'])->group(function () {
     Route::get('/client/dashboard', ClientDashboard::class)->name('client.dashboard');
 });
