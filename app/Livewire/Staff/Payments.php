@@ -6,6 +6,8 @@ use Livewire\Component;
 use App\Models\Client;
 use App\Models\AdminLog;
 use Illuminate\Support\Carbon;
+use App\Jobs\UnblockClientJob;
+use App\Jobs\BlockClientJob;
 
 class Payments extends Component
 {
@@ -15,17 +17,39 @@ class Payments extends Component
     public function markAsPaid($clientId)
     {
         $client = Client::findOrFail($clientId);
-        $client->status = 'Paid';
-        $client->next_due = now()->addDays(30);
-        $client->enforcement_status = 'Cleared'; // Optional: Reset enforcement
-        $client->block_status = 'Unblocked';     // Optional: Visually reflect it
+        $client->payment_status = 'Paid';
+        $client->next_due_date = now()->addDays(30);
+        $client->block_status = 'Unblocked';
         $client->save();
 
+        // Dispatch job to queue
+        dispatch(new UnblockClientJob($client->mac_address, $client->repeater_name ?? 'Unknown'));
+
         AdminLog::create([
-            'action' => "Marked {$client->fullname} as Paid",
-            'admin_id' => auth()->id(),
+            'details' => "Marked {$client->fullname} as Paid",
+            'mac_address' => $client->mac_address,
+            'action' => 'Payment Update',
         ]);
     }
+
+    public function markAsUnpaid($clientId)
+    {
+        $client = Client::findOrFail($clientId);
+        $client->payment_status = 'Unpaid';
+        $client->block_status = 'Blocked';
+        $client->next_due_date = null; 
+        $client->save();
+
+        // Dispatch job to block the client
+        dispatch(new BlockClientJob($client->mac_address, $client->repeater_name ?? 'Unknown'));
+
+        AdminLog::create([
+            'details' => "Marked {$client->fullname} as Unpaid",
+            'mac_address' => $client->mac_address,
+            'action' => 'Payment Update',
+        ]);
+    }
+
 
 
     public function getFilteredClientsProperty()

@@ -11,6 +11,8 @@ use App\Livewire\Staff\Settings as StaffSettings;
 use App\Livewire\Auth\Register;
 use App\Livewire\Auth\VerifyEmail;
 use App\Http\Middleware\EnsureClientEmailIsVerified;
+use App\Models\Payment;
+use Illuminate\Support\Facades\Auth;
 
 Route::get('/', Login::class)->name('login');
 Route::get('/register', Register::class)->name('register'); 
@@ -26,4 +28,21 @@ Route::middleware(['auth:staff'])->group(function () {
 
 Route::middleware(['auth:client'])->group(function () {
     Route::get('/client/dashboard', ClientDashboard::class)->name('client.dashboard');
+    Route::get('/client/renew/callback', function () {
+    $client = Auth::guard('client')->user();
+
+    if ($client) {
+        Payment::create([
+            'client_id' => $client->id,
+            'amount' => 1000,
+            'method' => 'GCash',
+            'reference' => 'gcash-' . now()->timestamp,
+            'paid_at' => now(),
+        ]);
+
+        return redirect()->route('client.dashboard')->with('success', 'Payment received!');
+    }
+
+    return redirect()->route('login')->with('error', 'Session expired.');
+})->name('client.renew.callback');
 });

@@ -144,7 +144,12 @@
 
                         <label class="block mb-2">
                             Building:
-                            <input type="text" wire:model.defer="editBuilding" class="border p-1 w-full" />
+                            <select wire:model.defer="editBuilding" class="border p-1 w-full">
+                                <option value="">-- Select Building --</option>
+                                <option value="Princeton">Princeton</option>
+                                <option value="Wharton">Wharton</option>
+                                <option value="Harvard">Harvard</option>
+                            </select>
                         </label>
 
                         <label class="block mb-4">

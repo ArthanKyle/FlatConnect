@@ -24,7 +24,7 @@ class Client extends Authenticatable implements \Illuminate\Contracts\Auth\MustV
         'apartment_number',
         'building',        
         'last_seen_at', 
-         'block_status',        
+        'block_status',        
         'repeater_status',    
         'enforcement_status',     
     ];

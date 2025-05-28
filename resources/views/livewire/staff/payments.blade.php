@@ -25,7 +25,7 @@
                 <table class="min-w-full border-collapse border border-gray-300 text-sm">
                     <thead>
                         <tr class="bg-gray-800 text-white">
-                            <th class="border px-4 py-2">Client</th>
+                            <th class="border px-4 py-2">Client Name</th>
                             <th class="border px-4 py-2">MAC Address</th>
                             <th class="border px-4 py-2">IP Address</th>
                             <th class="border px-4 py-2">Status</th>
@@ -36,17 +36,17 @@
                     </thead>
                     <tbody>
                     @forelse ($clients as $client)
-                        <tr class="{{ $client['dynamic_status'] === 'Unpaid' ? 'bg-red-100' : 'bg-green-50' }}">
+                        <tr class="{{ $client['payment_status'] === 'Unpaid' ? 'bg-red-100' : 'bg-green-50' }}">
                             <td class="border px-4 py-2">{{ $client->fullname }}</td>
                             <td class="border px-4 py-2">{{ $client->mac_address }}</td>
                             <td class="border px-4 py-2">{{ $client->ip_address }}</td>
-                            <td class="border px-4 py-2 font-semibold text-sm {{ $client['dynamic_status'] === 'Unpaid' ? 'text-red-600' : 'text-green-600' }}">
-                                {{ $client['dynamic_status'] }}
+                            <td class="border px-4 py-2 font-semibold text-sm {{ $client['payment_status'] === 'Unpaid' ? 'text-red-600' : 'text-green-600' }}">
+                                {{ $client['payment_status'] }}
                             </td>
                             <td class="border px-4 py-2">{{ $client['next_due_formatted'] ?? '-' }}</td>
                             <td class="border px-4 py-2 text-xs text-gray-600">{{ $client['due_notice'] }}</td>
                             <td class="border px-4 py-2">
-                                @if ($client['dynamic_status'] === 'Unpaid')
+                                @if ($client['payment_status'] === 'Unpaid')
                                     <button
                                         wire:click="markAsPaid({{ $client->id }})"
                                         class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded shadow-sm">

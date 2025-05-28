@@ -3,24 +3,31 @@
 namespace App\Livewire\Client;
 
 use Livewire\Component;
-use App\Services\Tplink\ClientDiscoveryService;
+use Illuminate\Support\Facades\Request;
+use App\Models\Client;
+use App\Models\Payment;
+use Illuminate\Support\Facades\Auth;
 
 class Dashboard extends Component
 {
     public $connectedIp;
     public $clientIp;
     public $nextDueDate;
-    public $payments;
+    public $payments = []; 
 
-    public function mount(ClientDiscoveryService $tplink)
+    public function mount()
     {
-        $client = auth()->guard('client')->user();
+        $this->connectedIp = Request::ip(); 
+        $client = Auth::guard('client')->user(); 
 
-        // Use the correct service and client model
-        $this->connectedIp = $tplink->getConnectedIp($client->mac_address);
-        $this->clientIp = $client->ip_address;
-        $this->nextDueDate = $client->next_due_date;
-        $this->payments = $client->payments()->latest()->get(); // Assuming relation exists
+        if ($client) {
+            $this->clientIp = $client->ip_address; 
+            $this->nextDueDate = $client->next_due_date;
+
+            $this->payments = Payment::where('client_id', $client->id)
+                ->orderByDesc('created_at')
+                ->get();
+        }
     }
 
     public function render()
