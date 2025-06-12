@@ -20,7 +20,7 @@
                     class="border px-3 py-2 rounded w-full sm:w-72"
                 />
                 <label class="inline-flex items-center space-x-2 text-gray-700">
-                    <input id="filterBlockedCheckbox" type="checkbox" wire:model="showOnlyBlocked" class="form-checkbox" />
+                   <input id="filterBlockedCheckbox" type="checkbox" class="form-checkbox" wire:ignore />
                     <span>Show Only Blocked</span>
                 </label>
             </div>
@@ -98,7 +98,7 @@
 
                     <!-- No clients found row -->
                     <tr id="noClientsRow" style="display:none;">
-                        <td colspan="11" class="text-center text-gray-500 italic py-4">
+                       <td colspan="100%" class="text-center text-gray-500">
                             No clients found matching your criteria.
                         </td>
                     </tr>
@@ -175,42 +175,59 @@
         const searchInput = document.getElementById('instantClientSearch');
         const blockedCheckbox = document.getElementById('filterBlockedCheckbox');
         const table = document.getElementById('clientTable');
+        const noClientsRow = document.getElementById('noClientsRow');
 
-        function filterRows() {
-            const query = searchInput.value.toLowerCase();
-            const showOnlyBlocked = blockedCheckbox.checked;
-            let visibleCount = 0;
-
+        function removeHighlights() {
             table.querySelectorAll('tbody tr').forEach(row => {
-                // Skip the "noClientsRow" itself
-                if (row.id === 'noClientsRow') return;
+                row.classList.remove('bg-yellow-100');
+            });
+        }
 
-                const text = row.textContent.toLowerCase();
-                // Check for blocked class added in row for filtering
-                const isBlocked = row.classList.contains('blocked-row');
+        function highlightFirstA(rows) {
+            for (const row of rows) {
+                const cells = row.querySelectorAll('td');
+                for (const cell of cells) {
+                    const text = cell.innerText.trim();
+                    if (text.toLowerCase().startsWith('a')) {
+                        row.classList.add('bg-yellow-100');
+                        return;
+                    }
+                }
+            }
+        }
 
-                const matchesSearch = text.includes(query);
-                const matchesBlocked = showOnlyBlocked ? isBlocked : true;
+        function filterTable() {
+            const query = searchInput.value.trim().toLowerCase();
+            const showOnlyBlocked = blockedCheckbox.checked;
+            const rows = table.querySelectorAll('tbody tr:not(#noClientsRow)');
+            let visibleRows = [];
 
-                if (matchesSearch && matchesBlocked) {
-                    row.style.display = '';
-                    visibleCount++;
-                } else {
-                    row.style.display = 'none';
+            rows.forEach(row => {
+                const rowText = row.innerText.toLowerCase();
+                const isBlocked = rowText.includes('blocked');
+                const matchesSearch = rowText.includes(query);
+                const matchesBlocked = !showOnlyBlocked || isBlocked;
+
+                const shouldShow = matchesSearch && matchesBlocked;
+
+                row.style.display = shouldShow ? '' : 'none';
+
+                if (shouldShow) {
+                    visibleRows.push(row);
                 }
             });
 
-            // Show or hide the "No clients found" row
-            const noClientsRow = document.getElementById('noClientsRow');
-            noClientsRow.style.display = visibleCount === 0 ? '' : 'none';
+            removeHighlights();
+            if (query === 'a') {
+                highlightFirstA(visibleRows);
+            }
+
+            noClientsRow.style.display = visibleRows.length === 0 ? '' : 'none';
         }
 
-        searchInput.addEventListener('input', filterRows);
-        blockedCheckbox.addEventListener('change', filterRows);
+        searchInput.addEventListener('input', filterTable);
+        blockedCheckbox.addEventListener('change', filterTable);
 
-        // Also run filter every 10 seconds to sync with Livewire poll updates
-        setInterval(filterRows, 10000);
-
-        filterRows();
+        filterTable(); // Initial run
     });
 </script>

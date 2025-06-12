@@ -26,4 +26,10 @@ class Payment extends Model
     {
         return $this->belongsTo(Client::class);
     }
+
+    public function getStatusAttribute($value)
+    {
+        return strtolower($value); // forces consistent usage
+    }
+
 }

@@ -17,7 +17,7 @@ class RenewSubscription extends Component
             ->post('https://api.paymongo.com/v1/sources', [
                 'data' => [
                     'attributes' => [
-                        'amount' => 1000 * 100, // centavos
+                        'amount' => 1000 * 100, 
                         'redirect' => [
                             'success' => $redirectUrl,
                             'failed' => $redirectUrl,

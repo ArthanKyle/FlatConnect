@@ -13,10 +13,11 @@ use App\Livewire\Auth\VerifyEmail;
 use App\Http\Middleware\EnsureClientEmailIsVerified;
 use App\Models\Payment;
 use Illuminate\Support\Facades\Auth;
+use App\Livewire\Client\Receipt;
 
 Route::get('/', Login::class)->name('login');
 Route::get('/register', Register::class)->name('register'); 
-Route::get('/verify-email', VerifyEmail::class)->name('verification.notice');
+
 
 Route::middleware(['auth:staff'])->group(function () {
     Route::get('/staff/dashboard', StaffDashboard::class)->name('staff.dashboard');
@@ -45,4 +46,6 @@ Route::middleware(['auth:client'])->group(function () {
 
     return redirect()->route('login')->with('error', 'Session expired.');
 })->name('client.renew.callback');
+    Route::get('/client/receipt/{payment}', Receipt::class)->name('receipt.print');
+
 });

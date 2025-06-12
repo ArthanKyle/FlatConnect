@@ -30,8 +30,24 @@ class Dashboard extends Component
         }
     }
 
+    public function generateTransactionNumber()
+    {
+        return 'FLC-' . strtoupper(uniqid());
+    }
+
+     public function logout()
+    {
+        Auth::logout(); 
+        session()->invalidate();
+        session()->regenerateToken(); 
+
+        return redirect()->route('login');
+    }
+
     public function render()
     {
-        return view('livewire.client.dashboard')->layout('layouts.app', ['title' => 'Client Dashboard']);
+      return view('livewire.client.dashboard', [
+        'transactionNumber' => $this->generateTransactionNumber()
+    ])->layout('layouts.app', ['title' => 'Client Dashboard']);
     }
 }
