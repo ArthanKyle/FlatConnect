@@ -25,6 +25,9 @@ class Client extends Component
     public $editLastName = null;
     public $editApartmentNumber = null;
     public $editBuilding = null;
+    public $rateLimitClientId = null;
+    public $rateLimitDownload = 5;
+    public $rateLimitUpload = 5;
 
     protected $listeners = ['refreshClients' => 'loadClientsFromDb'];
 
@@ -96,7 +99,7 @@ class Client extends Component
 
     public function loadClientsFromDb(): void
     {
-        $query = ClientModel::query();
+        $query = ClientModel::with('bandwidthLimit');
 
         if (!empty($this->search)) {
             $searchTerm = '%' . $this->search . '%';
@@ -144,6 +147,8 @@ class Client extends Component
                     ? $client->next_due_date->format('Y-m-d')
                     : null,
                 'next_due_formatted' => $nextDueDateFormatted,
+                'rate_limit_download' => $client->bandwidthLimit->download_limit ?? null,
+                'rate_limit_upload' => $client->bandwidthLimit->upload_limit ?? null,
             ];
         })->toArray();
 
@@ -178,6 +183,7 @@ class Client extends Component
         $this->paginateClients();
     }
 
+    // This method is called when a staff member clicks on the "Edit" button
     public function editClient(int $clientId): void
     {
         $client = ClientModel::findOrFail($clientId);
@@ -191,6 +197,7 @@ class Client extends Component
         $this->editBuilding = $client->building;
     }
 
+    // This method is called when a staff member clicks on the "Cancel" button
     public function cancelEdit(): void
     {
         $this->editingClientId = null;
@@ -202,6 +209,7 @@ class Client extends Component
         $this->editBuilding = null;
     }
 
+    // This method is called when a staff member clicks on the "Save" button
     public function saveEdit(): void
     {
         $client = ClientModel::findOrFail($this->editingClientId);
@@ -230,6 +238,7 @@ class Client extends Component
         $this->loadClientsFromDb();
     }
 
+    // This method is called when a staff member clicks on the "Block" button
     public function block(string $macAddress, ClientDiscoveryService $discoveryService): void
     {
         if ($discoveryService->blockClient($macAddress)) {
@@ -246,6 +255,7 @@ class Client extends Component
         }
     }
 
+    // This method is called when a staff member clicks on the "Unblock" button
     public function unblock(string $macAddress, ClientDiscoveryService $discoveryService): void
     {
         if ($discoveryService->unblockClient($macAddress)) {
@@ -260,6 +270,52 @@ class Client extends Component
                 $this->loadClientsFromDb();
             }
         }
+    }
+
+    // This method is called when the rate limiter is opened for a specific client
+    public function openRateLimiter(int $clientId): void
+    {
+        $this->rateLimitClientId = $clientId;
+        $client = ClientModel::with('bandwidthLimit')->find($clientId);
+
+        if ($client && $client->bandwidthLimit) {
+            $this->rateLimitDownload = $client->bandwidthLimit->download_limit;
+            $this->rateLimitUpload = $client->bandwidthLimit->upload_limit;
+        } else {
+            $this->rateLimitDownload = 5;
+            $this->rateLimitUpload = 5;
+        }
+    }
+
+    // This method is called when the rate limit values are updated      
+    public function saveRateLimit(ClientDiscoveryService $discoveryService): void
+    {
+        $client = ClientModel::findOrFail($this->rateLimitClientId);
+
+        $success = $discoveryService->limitClientBandwidth(
+            $client->mac_address,
+            $this->rateLimitDownload,
+            $this->rateLimitUpload
+        );
+
+        if ($success) {
+            $client->bandwidthLimit()->updateOrCreate(
+            ['client_id' => $client->id],
+            [
+                'download_limit' => $this->rateLimitDownload,
+                'upload_limit' => $this->rateLimitUpload,
+            ]
+        );
+
+            AdminLog::create([
+                'action' => 'Rate Limit',
+                'mac_address' => $client->mac_address,
+                'details' => "Applied {$this->rateLimitDownload}Mbps DL / {$this->rateLimitUpload}Mbps UL to {$client->mac_address}.",
+            ]);
+        }
+
+        $this->rateLimitClientId = null;
+        $this->loadClientsFromDb();
     }
 
     public function render()

@@ -2,17 +2,17 @@
 
 namespace App\Models;
 
+use Illuminate\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Auth\MustVerifyEmail;
 
 class Client extends Authenticatable implements \Illuminate\Contracts\Auth\MustVerifyEmail
 {
-    use HasFactory, Notifiable, MustVerifyEmail;
+    use HasFactory, MustVerifyEmail, Notifiable;
 
     protected $fillable = [
-       'first_name',
+        'first_name',
         'last_name',
         'email',
         'password',
@@ -22,11 +22,14 @@ class Client extends Authenticatable implements \Illuminate\Contracts\Auth\MustV
         'status',
         'next_due_date',
         'apartment_number',
-        'building',        
-        'last_seen_at', 
-        'block_status',        
-        'repeater_status',    
-        'enforcement_status',     
+        'building',
+        'last_seen_at',
+        'block_status',
+        'repeater_status',
+        'enforcement_status',
+        'phone_number',
+        'upload_limit',
+        'download_limit',
     ];
 
     protected $hidden = [
@@ -45,7 +48,7 @@ class Client extends Authenticatable implements \Illuminate\Contracts\Auth\MustV
     {
         return $this->hasMany(\App\Models\Payment::class);
     }
-    
+
     public function getStatusDisplayAttribute()
     {
         return $this->status;
@@ -53,7 +56,7 @@ class Client extends Authenticatable implements \Illuminate\Contracts\Auth\MustV
 
     public function getFullnameAttribute()
     {
-        return trim($this->first_name . ' ' . $this->last_name);
+        return trim($this->first_name.' '.$this->last_name);
     }
 
     public function getNextDueFormattedAttribute(): string
@@ -67,4 +70,10 @@ class Client extends Authenticatable implements \Illuminate\Contracts\Auth\MustV
     {
         return $this->block_status === 'blocked';
     }
+
+    public function bandwidthLimit()
+    {
+        return $this->hasOne(ClientLimit::class, 'client_id');
+    }
+
 }

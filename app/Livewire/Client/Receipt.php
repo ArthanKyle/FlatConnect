@@ -2,13 +2,14 @@
 
 namespace App\Livewire\Client;
 
-use Livewire\Component;
 use App\Models\Payment;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Livewire\Component;
 
 class Receipt extends Component
 {
     public $payment;
+
     public $clientIp;
 
     public function mount(Payment $payment)
@@ -32,6 +33,6 @@ class Receipt extends Component
     public function render()
     {
         return view('livewire.client.receipt')
-            ->layout('layouts.app', ['title' => 'Payment Receipt']); 
+            ->layout('layouts.app', ['title' => 'Payment Receipt']);
     }
 }

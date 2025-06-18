@@ -11,7 +11,8 @@ class AdminLog extends Model
         'mac_address',
         'details',
     ];
+
     protected $appends = [
-        'formatted_date'
+        'formatted_date',
     ];
 }

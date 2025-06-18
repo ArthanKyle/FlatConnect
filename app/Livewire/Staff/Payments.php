@@ -2,16 +2,16 @@
 
 namespace App\Livewire\Staff;
 
-use Livewire\Component;
-use App\Models\Client;
-use App\Models\AdminLog;
-use Illuminate\Support\Carbon;
-use App\Jobs\UnblockClientJob;
 use App\Jobs\BlockClientJob;
+use App\Jobs\UnblockClientJob;
+use App\Models\AdminLog;
+use App\Models\Client;
+use Livewire\Component;
 
 class Payments extends Component
 {
     public $search = '';
+
     public $statusFilter = ''; // 'paid' or 'unpaid'
 
     public function markAsPaid($clientId)
@@ -37,7 +37,7 @@ class Payments extends Component
         $client = Client::findOrFail($clientId);
         $client->payment_status = 'Unpaid';
         $client->block_status = 'Blocked';
-        $client->next_due_date = null; 
+        $client->next_due_date = null;
         $client->save();
 
         // Dispatch job to block the client
@@ -49,8 +49,6 @@ class Payments extends Component
             'action' => 'Payment Update',
         ]);
     }
-
-
 
     public function getFilteredClientsProperty()
     {
@@ -67,10 +65,10 @@ class Payments extends Component
 
                     if ($now->lessThanOrEqualTo($client->next_due)) {
                         $client->dynamic_status = 'Paid';
-                        $client->due_notice = 'Due in ' . $now->diffInDays($client->next_due) . ' days';
+                        $client->due_notice = 'Due in '.$now->diffInDays($client->next_due).' days';
                     } else {
                         $client->dynamic_status = 'Unpaid';
-                        $client->due_notice = 'Overdue by ' . $client->next_due->diffInDays($now) . ' days';
+                        $client->due_notice = 'Overdue by '.$client->next_due->diffInDays($now).' days';
                     }
 
                     $client->next_due_formatted = $client->next_due->format('Y-m-d');
@@ -82,17 +80,15 @@ class Payments extends Component
 
                 return $client;
             })
-            ->when($this->statusFilter, fn ($clients) =>
-                $clients->filter(fn ($client) =>
-                    strtolower($client->dynamic_status) === strtolower($this->statusFilter)
-                )
+            ->when($this->statusFilter, fn ($clients) => $clients->filter(fn ($client) => strtolower($client->dynamic_status) === strtolower($this->statusFilter)
+            )
             );
     }
 
     public function render()
     {
         return view('livewire.staff.payments', [
-            'clients' => $this->filteredClients
+            'clients' => $this->filteredClients,
         ])->layout('layouts.app', ['title' => 'Admin Dashboard']);
     }
 }

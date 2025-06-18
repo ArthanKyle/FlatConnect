@@ -73,7 +73,7 @@ return [
             'replace_placeholders' => true,
         ],
 
-         'login' => [
+        'login' => [
             'driver' => 'single',
             'path' => storage_path('logs/login.log'),
             'level' => 'info',

@@ -2,9 +2,9 @@
 
 namespace Database\Seeders;
 
+use App\Models\Client;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-use App\Models\Client;
 
 class ClientSeeder extends Seeder
 {

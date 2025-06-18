@@ -24,41 +24,43 @@
 
             <!-- Payments Table -->
             <div class="overflow-x-auto">
-                <table class="min-w-full border-collapse border border-gray-300 text-sm">
+               <table class="min-w-full border-collapse border border-black text-sm">
                     <thead>
                         <tr class="bg-gray-800 text-white">
-                            <th class="border px-4 py-2">Client Name</th>
-                            <th class="border px-4 py-2">MAC Address</th>
-                            <th class="border px-4 py-2">IP Address</th>
-                            <th class="border px-4 py-2">Status</th>
-                            <th class="border px-4 py-2">Next Due</th>
-                            <th class="border px-4 py-2">Notice</th>
-                            <th class="border px-4 py-2">Action</th>
+                            <th class="border border-black px-4 py-2">Client Name</th>
+                            <th class="border border-black px-4 py-2">MAC Address</th>
+                            <th class="border border-black px-4 py-2">IP Address</th>
+                            <th class="border border-black px-4 py-2">Status</th>
+                            <th class="border border-black px-4 py-2">Next Due</th>
+                            <th class="border border-black px-4 py-2">Notice</th>
+                            <th class="border border-black px-4 py-2">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse ($clients as $client)
                             <tr class="{{ $client->payment_status === 'Unpaid' ? 'bg-red-100' : 'bg-green-50' }}">
-                                <td class="border px-4 py-2">{{ $client->fullname }}</td>
-                                <td class="border px-4 py-2">{{ $client->mac_address }}</td>
-                                <td class="border px-4 py-2">{{ $client->ip_address }}</td>
-                                <td class="border px-4 py-2 font-semibold text-sm {{ $client->payment_status === 'Unpaid' ? 'text-red-600' : 'text-green-600' }}">
+                                <td class="border border-black px-4 py-2">{{ $client->fullname }}</td>
+                                <td class="border border-black px-4 py-2">{{ $client->mac_address }}</td>
+                                <td class="border border-black px-4 py-2">{{ $client->ip_address }}</td>
+                                <td class="border border-black px-4 py-2 font-semibold text-sm {{ $client->payment_status === 'Unpaid' ? 'text-red-600' : 'text-green-600' }}">
                                     {{ $client->payment_status }}
                                 </td>
-                                <td class="border px-4 py-2">{{ $client->next_due_formatted ?? '-' }}</td>
-                                <td class="border px-4 py-2 text-xs text-gray-600">{{ $client->due_notice }}</td>
-                                <td class="border px-4 py-2 space-x-1">
-                                    @if ($client->payment_status === 'Unpaid')
+                                <td class="border border-black px-4 py-2">{{ $client->next_due_formatted ?? '-' }}</td>
+                                <td class="border border-black px-4 py-2 text-xs text-gray-600">{{ $client->due_notice }}</td>
+                                <td class="border border-black px-4 py-2 text-center align-middle">
+                                    <div class="flex justify-center space-x-1">
+                                        @if ($client->payment_status === 'Unpaid')
                                         <button wire:click="markAsPaid({{ $client->id }})"
                                             class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded shadow-sm">
-                                            Mark Paid
+                                            Mark as Paid
                                         </button>
                                     @endif
                                     <button wire:click="markAsUnpaid({{ $client->id }})"
                                         class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded shadow-sm">
-                                        Mark Unpaid
+                                        Mark as Unpaid
                                     </button>
-                                </td>
+                                </div>
+                            </td>
                             </tr>
                         @empty
                             <tr>

@@ -12,14 +12,14 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->alias([
-        'staff' => \App\Http\Middleware\StaffMiddleware::class,
-        'client' => \App\Http\Middleware\ClientMiddleware::class,
-        'client.verified' => \App\Http\Middleware\EnsureClientEmailIsVerified::class,
-    ]);
+            'staff' => \App\Http\Middleware\StaffMiddleware::class,
+            'client' => \App\Http\Middleware\ClientMiddleware::class,
+            'client.verified' => \App\Http\Middleware\EnsureClientEmailIsVerified::class,
+        ]);
     })
     ->withCommands([
-    \App\Console\Commands\BlockOverdueClients::class,
-    \App\Console\Commands\ListOverdueClients::class,
+        \App\Console\Commands\BlockOverdueClients::class,
+        \App\Console\Commands\ListOverdueClients::class,
     ])
     ->withExceptions(function (Exceptions $exceptions) {
         //

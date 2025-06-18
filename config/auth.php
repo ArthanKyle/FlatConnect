@@ -36,13 +36,13 @@ return [
     */
 
     'guards' => [
-            'staff' => [
-                'driver' => 'session',
-                'provider' => 'staff',
+        'staff' => [
+            'driver' => 'session',
+            'provider' => 'staff',
         ],
-            'client' => [
-                'driver' => 'session',
-                'provider' => 'clients',
+        'client' => [
+            'driver' => 'session',
+            'provider' => 'clients',
         ],
     ],
 
@@ -64,14 +64,14 @@ return [
     */
 
     'providers' => [
-            'staff' => [
-                'driver' => 'eloquent',
-                'model' => App\Models\Staff::class,
-            ],
-            'clients' => [
-                'driver' => 'eloquent',
-                'model' => App\Models\Client::class,
-            ],
+        'staff' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\Staff::class,
+        ],
+        'clients' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\Client::class,
+        ],
     ],
 
     /*

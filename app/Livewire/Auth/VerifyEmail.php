@@ -1,22 +1,21 @@
 <?php
 
-
 namespace App\Livewire\Auth;
 
-use Livewire\Component;
-use Illuminate\Support\Facades\Auth;
 use App\Models\Client;
+use Illuminate\Support\Facades\Auth;
+use Livewire\Component;
 
 class VerifyEmail extends Component
 {
     public $emailVerified = false;
 
-   public function mount()
+    public function mount()
     {
         $client = Auth::guard('client')->user();
 
-        if (!$client) {
-            return redirect()->to('/'); 
+        if (! $client) {
+            return redirect()->to('/');
         }
 
         if ($client->hasVerifiedEmail()) {
@@ -26,12 +25,11 @@ class VerifyEmail extends Component
         $this->emailVerified = false;
     }
 
-
     public function resendVerification()
     {
         $client = Auth::guard('client')->user();
 
-        if ($client instanceof Client && !$client->hasVerifiedEmail()) {
+        if ($client instanceof Client && ! $client->hasVerifiedEmail()) {
             $client->sendEmailVerificationNotification();
             session()->flash('message', 'Verification link sent!');
         }

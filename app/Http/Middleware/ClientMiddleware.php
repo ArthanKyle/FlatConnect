@@ -9,7 +9,7 @@ class ClientMiddleware
 {
     public function handle($request, Closure $next)
     {
-        if (!Auth::check() || !Auth::user() instanceof \App\Models\Client) {
+        if (! Auth::check() || ! Auth::user() instanceof \App\Models\Client) {
             return redirect()->route('login'); // Redirect unauthorized users
         }
 

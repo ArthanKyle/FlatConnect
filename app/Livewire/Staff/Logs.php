@@ -2,8 +2,8 @@
 
 namespace App\Livewire\Staff;
 
-use Livewire\Component;
 use App\Models\AdminLog as AdminLogModel;
+use Livewire\Component;
 use Livewire\WithPagination;
 
 class Logs extends Component

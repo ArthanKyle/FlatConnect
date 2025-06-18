@@ -13,18 +13,20 @@ return new class extends Migration
     {
         Schema::create('clients', function (Blueprint $table) {
             $table->id();
-            $table->string('first_name')->nullable();;
+            $table->string('first_name')->nullable();
             $table->string('last_name')->nullable();
             $table->string('email')->unique()->nullable();
             $table->string('password')->nullable();
             $table->string('mac_address')->unique()->nullable();
             $table->string('repeater_name')->nullable();
             $table->string('ip_address')->nullable();
+            $table->string('phone_number')->nullable();
             $table->enum('status', ['active', 'inactive', 'blocked'])->default('active');
             $table->date('next_due_date')->nullable();
-            $table->string('building')->nullable();            
-            $table->string('apartment_number')->nullable();   
-            $table->timestamp('last_seen_at')->nullable();     
+            $table->string('building')->nullable();
+            $table->string('apartment_number')->nullable();
+            $table->timestamp('last_seen_at')->nullable();
+            $table->rememberToken();
             $table->timestamps();
         });
 

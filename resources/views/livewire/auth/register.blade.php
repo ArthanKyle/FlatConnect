@@ -36,6 +36,12 @@
                 </div>
 
                 <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                    <input type="text" wire:model.defer="phone_number" required
+                        class="w-full px-4 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                 </div>
+
+                <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
                     <input type="password" wire:model.defer="password" required
                         class="w-full px-4 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">

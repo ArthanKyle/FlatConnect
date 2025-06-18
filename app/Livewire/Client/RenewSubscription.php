@@ -2,9 +2,9 @@
 
 namespace App\Livewire\Client;
 
-use Livewire\Component;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
+use Livewire\Component;
 
 class RenewSubscription extends Component
 {
@@ -17,7 +17,7 @@ class RenewSubscription extends Component
             ->post('https://api.paymongo.com/v1/sources', [
                 'data' => [
                     'attributes' => [
-                        'amount' => 1000 * 100, 
+                        'amount' => 1000 * 100,
                         'redirect' => [
                             'success' => $redirectUrl,
                             'failed' => $redirectUrl,

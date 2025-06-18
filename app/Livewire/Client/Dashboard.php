@@ -2,26 +2,28 @@
 
 namespace App\Livewire\Client;
 
-use Livewire\Component;
-use Illuminate\Support\Facades\Request;
-use App\Models\Client;
 use App\Models\Payment;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Request;
+use Livewire\Component;
 
 class Dashboard extends Component
 {
     public $connectedIp;
+
     public $clientIp;
+
     public $nextDueDate;
-    public $payments = []; 
+
+    public $payments = [];
 
     public function mount()
     {
-        $this->connectedIp = Request::ip(); 
-        $client = Auth::guard('client')->user(); 
+        $this->connectedIp = Request::ip();
+        $client = Auth::guard('client')->user();
 
         if ($client) {
-            $this->clientIp = $client->ip_address; 
+            $this->clientIp = $client->ip_address;
             $this->nextDueDate = $client->next_due_date;
 
             $this->payments = Payment::where('client_id', $client->id)
@@ -32,22 +34,22 @@ class Dashboard extends Component
 
     public function generateTransactionNumber()
     {
-        return 'FLC-' . strtoupper(uniqid());
+        return 'FLC-'.strtoupper(uniqid());
     }
 
-     public function logout()
+    public function logout()
     {
-        Auth::logout(); 
+        Auth::logout();
         session()->invalidate();
-        session()->regenerateToken(); 
+        session()->regenerateToken();
 
         return redirect()->route('login');
     }
 
     public function render()
     {
-      return view('livewire.client.dashboard', [
-        'transactionNumber' => $this->generateTransactionNumber()
-    ])->layout('layouts.app', ['title' => 'Client Dashboard']);
+        return view('livewire.client.dashboard', [
+            'transactionNumber' => $this->generateTransactionNumber(),
+        ])->layout('layouts.app', ['title' => 'Client Dashboard']);
     }
 }

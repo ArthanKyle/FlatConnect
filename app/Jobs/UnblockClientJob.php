@@ -2,7 +2,6 @@
 
 namespace App\Jobs;
 
-use App\Models\Client;
 use App\Services\Tplink\ClientDiscoveryService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -16,6 +15,7 @@ class UnblockClientJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public string $mac;
+
     public string $hostname;
 
     public function __construct(string $mac, string $hostname = 'Unknown')

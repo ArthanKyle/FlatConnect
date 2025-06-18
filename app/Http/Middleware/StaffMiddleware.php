@@ -9,7 +9,7 @@ class StaffMiddleware
 {
     public function handle($request, Closure $next)
     {
-        if (!Auth::check() || !Auth::user() instanceof \App\Models\Staff) {
+        if (! Auth::check() || ! Auth::user() instanceof \App\Models\Staff) {
             return redirect()->route('login'); // Redirect unauthorized users
         }
 

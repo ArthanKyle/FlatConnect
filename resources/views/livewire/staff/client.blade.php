@@ -43,8 +43,8 @@
                             <th class="border border-gray-300 px-4 py-2 text-left">Repeater's Name</th>
                             <th class="border border-gray-300 px-4 py-2 text-left">MAC Address</th>
                             <th class="border border-gray-300 px-4 py-2 text-left">IP Address</th>
-                            <th class="border border-gray-300 px-4 py-2 text-left">Block Status</th>
                             <th class="border border-gray-300 px-4 py-2 text-left">Enforcement Status</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">Rate Limits</th>
                             <th class="border border-gray-300 px-4 py-2 text-left">Next Due Date</th>
                             <th class="border border-gray-300 px-4 py-2 text-left">Status</th>
                             <th class="border border-gray-300 px-4 py-2 text-left">Actions</th>
@@ -53,24 +53,19 @@
                     <tbody>
                     @foreach ($clients as $client)
                         <tr class="bg-white border border-black whitespace-nowrap">
-                            <td class="border border-black px-4 py-2">{{ $client['fullname'] }}</td>
-                            <td class="border border-black px-4 py-2">{{ $client['building'] }}</td>
-                            <td class="border border-black px-4 py-2">{{ $client['apartment_number'] }}</td>
-                            <td class="border border-black px-4 py-2">{{ $client['repeater_name'] }}</td>
-                            <td class="border border-black px-4 py-2">{{ $client['mac_address'] }}</td>
-                            <td class="border border-black px-4 py-2">{{ $client['ip_address'] }}</td>
-                            
-                            <td class="border border-black px-4 py-2">
-                                @if ($client['block_status'] === 'blocked')
-                                    <span class="text-red-600 font-bold">Blocked</span>
-                                @elseif ($client['block_status'] === 'pending_block')
-                                    <span class="text-yellow-600">Pending Block</span>
-                                @else
-                                    <span class="text-green-600">Unblocked</span>
-                                @endif
+                            <td class="border border-black px-4 py-2 text-center">{{ $client['fullname'] }}</td>
+                            <td class="border border-black px-4 py-2 text-center">{{ $client['building'] }}</td>
+                            <td class="border border-black px-4 py-2 text-center">{{ $client['apartment_number'] }}</td>
+                            <td class="border border-black px-4 py-2 text-center">{{ $client['repeater_name'] }}</td>
+                            <td class="border border-black px-4 py-2 text-center">{{ $client['mac_address'] }}</td>
+                            <td class="border border-black px-4 py-2 text-center">{{ $client['ip_address'] }}</td>
+                            <td class="border border-black px-4 py-2 text-center">{{ ucfirst($client['enforcement_status']) }}</td>
+                            <td class="border border-black px-4 py-2 text-center">
+                             <strong>DL</strong>: {{ $client['rate_limit_download'] ?? '—' }} Mbps
+                                /
+                             <strong>UL</strong>: {{ $client['rate_limit_upload'] ?? '—' }} Mbps
                             </td>
-                            <td class="border border-black px-4 py-2">{{ ucfirst($client['enforcement_status']) }}</td>
-                            <td class="border border-black px-4 py-2">
+                            <td class="border border-black px-4 py-2 text-center">
                                 {{ !empty($client['next_due_date']) ? \Carbon\Carbon::parse($client['next_due_date'])->format('F j, Y') : '-' }}
                             </td>
 
@@ -92,6 +87,7 @@
                                     <button wire:click="unblock('{{ $client['mac_address'] }}')" class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs">Unblock</button>
                                 @endif
                                 <button wire:click="editClient({{ $client['id'] }})" class="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs">Edit</button>
+                                <button wire:click="openRateLimiter({{ $client['id'] }})" class="bg-yellow-600 hover:bg-yellow-700 text-white px-2 py-1 rounded text-xs">Rate Limiter</button>
                             </td>
                         </tr>
                     @endforeach
@@ -115,6 +111,33 @@
                     </button>
                 @endfor
             </div>
+
+
+             {{-- Rate Limiter Modal --}} 
+            @if ($rateLimitClientId)
+                    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                        <div class="bg-white p-6 rounded shadow max-w-sm w-full">
+                            <h2 class="text-lg font-bold mb-4">Apply Rate Limit</h2>
+                            <label class="block mb-2">
+                                Download (Mbps):
+                                <input type="number" wire:model.defer="rateLimitDownload" min="1" class="border p-1 w-full" />
+                            </label>
+
+                            <label class="block mb-4">
+                                Upload (Mbps):
+                                <input type="number" wire:model.defer="rateLimitUpload" min="1" class="border p-1 w-full" />
+                            </label>
+
+                            <div class="flex justify-end space-x-2">
+                                <button wire:click="$set('rateLimitClientId', null)" class="px-4 py-2 bg-gray-300 rounded">Cancel</button>
+                                <button wire:click="saveRateLimit" class="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700">
+                                    Apply
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+              @endif
+
 
             {{-- Edit Modal (simple inline version) --}}
             @if ($editingClientId)

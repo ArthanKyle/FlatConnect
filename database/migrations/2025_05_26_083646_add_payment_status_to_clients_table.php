@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('clients', function (Blueprint $table) {
-         $table->string('payment_status')->default('Unpaid')->after('status');
+            $table->string('payment_status')->default('Unpaid')->after('status');
         });
     }
 

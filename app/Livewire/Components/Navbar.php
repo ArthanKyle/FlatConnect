@@ -9,9 +9,9 @@ class Navbar extends Component
 {
     public function logout()
     {
-        Auth::logout(); 
+        Auth::logout();
         session()->invalidate();
-        session()->regenerateToken(); 
+        session()->regenerateToken();
 
         return redirect()->route('login');
     }

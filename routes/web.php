@@ -1,23 +1,20 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use App\Livewire\Auth\Login;
-use App\Livewire\Staff\Dashboard as StaffDashboard;
-use App\Livewire\Client\Dashboard as ClientDashboard;
-use App\Livewire\Staff\Client as StaffClient;
-use App\Livewire\Staff\Payments as StaffPayments;
-use App\Livewire\Staff\Logs as StaffLogs;
-use App\Livewire\Staff\Settings as StaffSettings; 
 use App\Livewire\Auth\Register;
-use App\Livewire\Auth\VerifyEmail;
-use App\Http\Middleware\EnsureClientEmailIsVerified;
+use App\Livewire\Client\Dashboard as ClientDashboard;
+use App\Livewire\Client\Receipt;
+use App\Livewire\Staff\Client as StaffClient;
+use App\Livewire\Staff\Dashboard as StaffDashboard;
+use App\Livewire\Staff\Logs as StaffLogs;
+use App\Livewire\Staff\Payments as StaffPayments;
+use App\Livewire\Staff\Settings as StaffSettings;
 use App\Models\Payment;
 use Illuminate\Support\Facades\Auth;
-use App\Livewire\Client\Receipt;
+use Illuminate\Support\Facades\Route;
 
 Route::get('/', Login::class)->name('login');
-Route::get('/register', Register::class)->name('register'); 
-
+Route::get('/register', Register::class)->name('register');
 
 Route::middleware(['auth:staff'])->group(function () {
     Route::get('/staff/dashboard', StaffDashboard::class)->name('staff.dashboard');
@@ -30,22 +27,22 @@ Route::middleware(['auth:staff'])->group(function () {
 Route::middleware(['auth:client'])->group(function () {
     Route::get('/client/dashboard', ClientDashboard::class)->name('client.dashboard');
     Route::get('/client/renew/callback', function () {
-    $client = Auth::guard('client')->user();
+        $client = Auth::guard('client')->user();
 
-    if ($client) {
-        Payment::create([
-            'client_id' => $client->id,
-            'amount' => 1000,
-            'method' => 'GCash',
-            'reference' => 'gcash-' . now()->timestamp,
-            'paid_at' => now(),
-        ]);
+        if ($client) {
+            Payment::create([
+                'client_id' => $client->id,
+                'amount' => 1000,
+                'method' => 'GCash',
+                'reference' => 'gcash-'.now()->timestamp,
+                'paid_at' => now(),
+            ]);
 
-        return redirect()->route('client.dashboard')->with('success', 'Payment received!');
-    }
+            return redirect()->route('client.dashboard')->with('success', 'Payment received!');
+        }
 
-    return redirect()->route('login')->with('error', 'Session expired.');
-})->name('client.renew.callback');
+        return redirect()->route('login')->with('error', 'Session expired.');
+    })->name('client.renew.callback');
     Route::get('/client/receipt/{payment}', Receipt::class)->name('receipt.print');
 
 });

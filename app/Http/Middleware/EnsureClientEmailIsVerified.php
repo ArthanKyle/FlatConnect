@@ -11,7 +11,7 @@ class EnsureClientEmailIsVerified
     {
         $client = Auth::guard('client')->user();
 
-        if ($client && !$client->hasVerifiedEmail()) {
+        if ($client && ! $client->hasVerifiedEmail()) {
             return redirect()->route('verification.notice');
         }
 
