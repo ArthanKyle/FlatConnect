@@ -39,9 +39,17 @@ class Dashboard extends Component
 
     public function logout()
     {
-        Auth::logout();
-        session()->invalidate();
-        session()->regenerateToken();
+        if (Auth::guard('client')->check()) {
+            $client = Auth::guard('client')->user();
+            $client->setRememberToken(null); // Clear remember_token
+            $client->save();
+
+            Auth::guard('client')->logout();
+            session()->invalidate();
+            session()->regenerateToken();
+
+            return redirect()->route('login'); // or 'client.login' if you have separate routes
+        }
 
         return redirect()->route('login');
     }

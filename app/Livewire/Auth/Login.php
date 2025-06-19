@@ -41,7 +41,7 @@ class Login extends Component
             return;
         }
 
-        RateLimiter::hit($key, 60); // 60 seconds lockout time after 5 tries
+        RateLimiter::hit($key, 60); // Lockout: 60 seconds after 5 tries
 
         // Attempt login as staff
         if (Auth::guard('staff')->attempt([
@@ -51,7 +51,8 @@ class Login extends Component
             RateLimiter::clear($key);
             Log::info('Staff logged in', ['email' => $this->email, 'ip' => $ip]);
 
-            return redirect()->route('staff.dashboard');
+            return $this->redirect(route('staff.dashboard'));
+
         }
 
         // Attempt login as client
@@ -62,7 +63,8 @@ class Login extends Component
             RateLimiter::clear($key);
             Log::info('Client logged in', ['email' => $this->email, 'ip' => $ip]);
 
-            return redirect()->route('client.dashboard');
+            return $this->redirect(route('client.dashboard'));
+
         }
 
         // Delay to slow brute force
