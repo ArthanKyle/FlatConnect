@@ -13,6 +13,13 @@ use App\Models\Payment;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/env-test', function () {
+    return env('APP_KEY');
+});
+
+Route::get('/', fn () => 'Hello from root');
+
+
 // Public Routes
 Route::get('/', Login::class)->name('login');
 Route::get('/register', Register::class)->name('register');

@@ -20,8 +20,6 @@
             <h2 class="text-2xl md:text-3xl font-bold text-gray-800 mb-6 md:mb-10 text-center">Login to your account</h2>
 
             <form wire:submit.prevent="login">
-                @csrf
-
                 <div class="mb-4">
                     <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
                     <input type="email" id="email" wire:model="email" required
@@ -54,7 +52,7 @@
                 </div>
 
                 @if ($error)
-                    <div class="mt-4 text-red-500 text-sm text-center">
+                    <div class="mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative text-sm text-center">
                         {{ $error }}
                     </div>
                 @endif

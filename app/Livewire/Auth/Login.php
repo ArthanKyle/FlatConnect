@@ -10,40 +10,46 @@ use Livewire\Component;
 class Login extends Component
 {
     public $email;
-
     public $password;
-
     public $remember = false;
-
     public $error;
 
     public function login()
     {
-        // Validate input
         $this->validate([
             'email' => 'required|email',
             'password' => 'required',
         ]);
 
-        // Rate limiting per IP+email
-        $key = 'login:'.strtolower($this->email).'|'.request()->ip();
+        $ip = request()->ip();
+        $key = 'login:' . strtolower($this->email) . '|' . $ip;
 
         if (RateLimiter::tooManyAttempts($key, 5)) {
             $seconds = RateLimiter::availableIn($key);
-            $this->error = "Too many attempts. Try again in {$seconds} seconds.";
 
+            Log::alert('Brute force lockout triggered', [
+                'email' => $this->email,
+                'ip' => $ip,
+                'attempts' => RateLimiter::attempts($key),
+                'cooldown' => $seconds,
+            ]);
+
+            // Optionally auto-block IP here
+            // app(BlockIpService::class)->block($ip);
+
+            $this->error = "Too many attempts. Try again in {$seconds} seconds.";
             return;
         }
 
-        RateLimiter::hit($key, 60); // Lockout time: 60 seconds
+        RateLimiter::hit($key, 60); // 60 seconds lockout time after 5 tries
 
         // Attempt login as staff
         if (Auth::guard('staff')->attempt([
             'email' => $this->email,
             'password' => $this->password,
         ], $this->remember)) {
-            RateLimiter::clear($key); // Clear rate limit on success
-            Log::info('Staff logged in', ['email' => $this->email, 'ip' => request()->ip()]);
+            RateLimiter::clear($key);
+            Log::info('Staff logged in', ['email' => $this->email, 'ip' => $ip]);
 
             return redirect()->route('staff.dashboard');
         }
@@ -54,17 +60,22 @@ class Login extends Component
             'password' => $this->password,
         ], $this->remember)) {
             RateLimiter::clear($key);
-            Log::info('Client logged in', ['email' => $this->email, 'ip' => request()->ip()]);
+            Log::info('Client logged in', ['email' => $this->email, 'ip' => $ip]);
 
             return redirect()->route('client.dashboard');
         }
 
+        // Delay to slow brute force
+        usleep(500_000); // 0.5 second delay
+
         // Log failed attempt
         Log::warning('Failed login attempt', [
             'email' => $this->email,
-            'ip' => request()->ip(),
+            'ip' => $ip,
+            'attempts' => RateLimiter::attempts($key),
         ]);
 
+        $this->password = ''; // Clear password field for safety
         $this->error = 'Invalid credentials or account not found.';
     }
 
