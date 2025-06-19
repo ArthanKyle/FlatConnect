@@ -2,69 +2,69 @@
 
 namespace App\Services\Tplink;
 
+use App\Models\Client;
 use GuzzleHttp\Cookie\CookieJar;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
-use App\Models\Client;
 
 class ClientDiscoveryService
 {
-    protected string $baseUrl;
-    protected string $username;
-    protected string $password;
-    protected array $excludedMacs;
+    protected string $baseUrl = 'http://192.168.1.11';
+
     protected CookieJar $cookieJar;
 
     public function __construct()
     {
-        $this->baseUrl = config('services.tplink.base_url');
-        $this->username = config('services.tplink.username');
-        $this->password = config('services.tplink.password');
-        $this->cookieJar = new CookieJar();
-
-        $this->excludedMacs = collect(explode(' ', env('EXCLUDED_MACS', '')))
-            ->map(fn ($mac) => strtoupper(trim($mac)))
-            ->filter()
-            ->toArray();
+        $this->cookieJar = new CookieJar;
     }
 
+    // Attempt to login to the TP-Link controller
+    /**
+     * Attempt to login to the TP-Link controller.
+     */
     public function login(): bool
     {
-        Log::info('Attempting to login to TP-Link controller at ' . $this->baseUrl);
+        Log::info('Attempting to login to TP-Link controller at '.$this->baseUrl);
 
         $response = Http::withHeaders([
             'Content-Type' => 'application/x-www-form-urlencoded; charset=UTF-8',
             'Origin' => $this->baseUrl,
-            'Referer' => $this->baseUrl . '/',
+            'Referer' => $this->baseUrl.'/',
             'User-Agent' => 'Mozilla/5.0',
             'X-Requested-With' => 'XMLHttpRequest',
         ])
-        ->withOptions([
-            'verify' => false,
-            'cookies' => $this->cookieJar,
-        ])
-        ->asForm()
-        ->post($this->baseUrl . '/', [
-            'username' => $this->username,
-            'password' => $this->password,
-        ]);
+            ->withOptions([
+                'verify' => false,
+                'cookies' => $this->cookieJar,
+            ])
+            ->asForm()
+            ->post($this->baseUrl.'/', [
+                'username' => 'AdminExistentialCrisis',
+                'password' => '66E652DD4948E20796A7B37C64FC0079',
+            ]);
 
         if ($response->successful()) {
             Log::info('Login successful.');
-            return true;
-        }
 
-        Log::error('Login failed with status: ' . $response->status());
-        return false;
+            return true;
+        } else {
+            Log::error('Login failed with status: '.$response->status());
+
+            return false;
+        }
     }
 
+    // Fetch all clients from the TP-Link controller
+    /**
+     * Fetch all clients from the TP-Link controller.
+     */
     public function fetchClients(): array
     {
         Log::info('Starting client fetch sequence.');
 
-        if (!$this->login()) {
+        if (! $this->login()) {
             Log::error('Login failed, aborting client fetch.');
+
             return [];
         }
 
@@ -76,8 +76,13 @@ class ClientDiscoveryService
 
         if (in_array(false, $responses, true)) {
             Log::error('One or more client endpoints failed.');
+
             return [];
         }
+
+        $excludedMacs = [
+            '8C-B8-7E-D4-52-01', // Your PC MAC
+        ];
 
         $allClients = collect(
             array_merge(
@@ -88,12 +93,14 @@ class ClientDiscoveryService
 
         $blockedMacs = collect($responses['blocklist']['data'] ?? [])
             ->pluck('MAC')
-            ->map(fn($mac) => strtoupper($mac))
+            ->map(fn ($mac) => strtoupper($mac))
             ->toArray();
 
-        return $allClients->map(function ($client) use ($blockedMacs) {
+        return $allClients->map(function ($client) use ($blockedMacs, $excludedMacs) {
             $mac = strtoupper($client['MAC'] ?? '');
-            if (!$mac || in_array($mac, $this->excludedMacs)) return null;
+            if (! $mac || in_array($mac, $excludedMacs)) {
+                return null;
+            }
 
             $ip = $client['IP'] ?? 'Unknown';
             $hostname = $client['hostname'] ?? 'Unknown';
@@ -102,18 +109,19 @@ class ClientDiscoveryService
 
             $existing = Client::where('mac_address', $mac)->first();
 
-            if (!$existing) {
+            if (! $existing) {
                 Client::create([
                     'mac_address' => $mac,
                     'ip_address' => $ip,
                     'repeater_name' => $hostname,
-                    'payment_status' => $status,
+                    'status' => $status,
                     'next_due_date' => now()->addDays(30),
                 ]);
             } else {
                 $updateData = [
                     'ip_address' => $ip,
-                    'payment_status' => $status,
+                    'status' => $status,
+                    'mac_address' => $mac,
                     'next_due_date' => $existing->next_due_date ?? now()->addDays(30),
                 ];
 
@@ -137,92 +145,156 @@ class ClientDiscoveryService
         })->filter()->toArray();
     }
 
+    /**
+     * Fetch JSON data from a given endpoint.
+     *
+     * @return array|false
+     */
     private function getJson(string $endpoint)
     {
         $response = Http::withHeaders([
             'X-Requested-With' => 'XMLHttpRequest',
             'Origin' => $this->baseUrl,
-            'Referer' => $this->baseUrl . '/',
+            'Referer' => $this->baseUrl.'/',
             'User-Agent' => 'Mozilla/5.0',
         ])
-        ->withOptions([
-            'verify' => false,
-            'cookies' => $this->cookieJar,
-        ])
-        ->get($this->baseUrl . $endpoint);
+            ->withOptions([
+                'verify' => false,
+                'cookies' => $this->cookieJar,
+            ])
+            ->get($this->baseUrl.$endpoint);
 
         return $response->successful() ? $response->json() : false;
     }
 
-    public function blockClient(string $mac, string $hostname = 'Unknown', int $up = 0, int $down = 0): bool
+    // Limit client bandwidth by MAC address
+    // Download and upload limits in Mbps
+
+    public function limitClientBandwidth(string $mac, int $downloadMbps = 5, int $uploadMbps = 5): bool
     {
-        if (!$this->login()) return false;
+        if (! $this->login()) {
+            return false;
+        }
 
         $mac = strtoupper($mac);
-        $timestamp = round(microtime(true) * 1000);
 
         $response = Http::withHeaders([
             'Accept' => 'application/json, text/javascript, */*; q=0.01',
-            'Referer' => $this->baseUrl . '/',
+            'Content-Type' => 'application/x-www-form-urlencoded; charset=UTF-8',
+            'Origin' => $this->baseUrl,
+            'Referer' => $this->baseUrl.'/',
             'User-Agent' => 'Mozilla/5.0',
             'X-Requested-With' => 'XMLHttpRequest',
-            'Origin' => $this->baseUrl,
         ])
-        ->withOptions([
-            'verify' => false,
-            'cookies' => $this->cookieJar,
-        ])
-        ->get($this->baseUrl . "/data/status.client.user.json", [
-            'operation' => 'block',
-            'hostname' => $hostname,
-            'MAC' => $mac,
-            'up' => $up,
-            'down' => $down,
-            '_' => $timestamp,
-        ]);
+            ->withOptions([
+                'verify' => false,
+                'cookies' => $this->cookieJar,
+            ])
+            ->asForm()
+            ->post($this->baseUrl.'/data/status.client.ratelimit.json', [
+                'operation' => 'write',
+                'limit' => 1,
+                'limit_download' => $downloadMbps,
+                'limit_download_unit' => 1, // 1 = Mbps
+                'limit_upload' => $uploadMbps,
+                'limit_upload_unit' => 1,   // 1 = Mbps
+                'MAC' => $mac,
+            ]);
 
         if ($response->successful()) {
-            Log::info("Blocked client with MAC {$mac}");
+            Log::info("Successfully limited bandwidth for {$mac} to {$downloadMbps}Mbps down / {$uploadMbps}Mbps up.");
+
             return true;
         }
 
-        Log::error("Failed to block client {$mac}, status: " . $response->status());
+        Log::error("Failed to set rate limit for {$mac}, status: ".$response->status());
+
         return false;
     }
 
-    public function unblockClient(string $mac, string $hostname = 'Unknown', int $up = 0, int $down = 0): bool
+    // Block a client by MAC address
+    // Optionally specify hostname and bandwidth limits
+
+    public function blockClient(string $mac, string $hostname = 'Unknown', int $up = 0, int $down = 0): bool
     {
-        if (!$this->login()) return false;
+        if (! $this->login()) {
+            return false;
+        }
 
         $mac = strtoupper($mac);
         $timestamp = round(microtime(true) * 1000);
 
         $response = Http::withHeaders([
             'Accept' => 'application/json, text/javascript, */*; q=0.01',
-            'Referer' => $this->baseUrl . '/',
+            'Referer' => $this->baseUrl.'/',
             'User-Agent' => 'Mozilla/5.0',
             'X-Requested-With' => 'XMLHttpRequest',
             'Origin' => $this->baseUrl,
         ])
-        ->withOptions([
-            'verify' => false,
-            'cookies' => $this->cookieJar,
-        ])
-        ->get($this->baseUrl . "/data/status.client.blocklist.json", [
-            'operation' => 'remove',
-            'hostname' => $hostname,
-            'MAC' => $mac,
-            'up' => $up,
-            'down' => $down,
-            '_' => $timestamp,
-        ]);
+            ->withOptions([
+                'verify' => false,
+                'cookies' => $this->cookieJar,
+            ])
+            ->get($this->baseUrl.'/data/status.client.user.json', [
+                'operation' => 'block',
+                'hostname' => $hostname,
+                'MAC' => $mac,
+                'up' => $up,
+                'down' => $down,
+                '_' => $timestamp,
+            ]);
 
         if ($response->successful()) {
-            Log::info("Unblocked client with MAC {$mac}");
+            Log::info("Blocked client with MAC {$mac}");
+
             return true;
         }
 
-        Log::error("Failed to unblock client {$mac}, status: " . $response->status());
+        Log::error("Failed to block client {$mac}, status: ".$response->status());
+
+        return false;
+    }
+
+    // Unblock a client by MAC address
+    // Optionally specify hostname and bandwidth limits
+
+    public function unblockClient(string $mac, string $hostname = 'Unknown', int $up = 0, int $down = 0): bool
+    {
+        if (! $this->login()) {
+            return false;
+        }
+
+        $mac = strtoupper($mac);
+        $timestamp = round(microtime(true) * 1000);
+
+        $response = Http::withHeaders([
+            'Accept' => 'application/json, text/javascript, */*; q=0.01',
+            'Referer' => $this->baseUrl.'/',
+            'User-Agent' => 'Mozilla/5.0',
+            'X-Requested-With' => 'XMLHttpRequest',
+            'Origin' => $this->baseUrl,
+        ])
+            ->withOptions([
+                'verify' => false,
+                'cookies' => $this->cookieJar,
+            ])
+            ->get($this->baseUrl.'/data/status.client.blocklist.json', [
+                'operation' => 'remove',
+                'hostname' => $hostname,
+                'MAC' => $mac,
+                'up' => $up,
+                'down' => $down,
+                '_' => $timestamp,
+            ]);
+
+        if ($response->successful()) {
+            Log::info("Unblocked client with MAC {$mac}");
+
+            return true;
+        }
+
+        Log::error("Failed to unblock client {$mac}, status: ".$response->status());
+
         return false;
     }
 }

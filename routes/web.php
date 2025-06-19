@@ -13,9 +13,11 @@ use App\Models\Payment;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
+// Public Routes
 Route::get('/', Login::class)->name('login');
 Route::get('/register', Register::class)->name('register');
 
+// Staff Routes
 Route::middleware(['auth:staff'])->group(function () {
     Route::get('/staff/dashboard', StaffDashboard::class)->name('staff.dashboard');
     Route::get('/staff/client', StaffClient::class)->name('staff.client');
@@ -24,18 +26,29 @@ Route::middleware(['auth:staff'])->group(function () {
     Route::get('/staff/settings', StaffSettings::class)->name('staff.settings');
 });
 
+// Client Routes
 Route::middleware(['auth:client'])->group(function () {
     Route::get('/client/dashboard', ClientDashboard::class)->name('client.dashboard');
+    Route::get('/client/receipt/{payment}', Receipt::class)->name('receipt.print');
+
     Route::get('/client/renew/callback', function () {
         $client = Auth::guard('client')->user();
 
         if ($client) {
+            // Create payment record
             Payment::create([
                 'client_id' => $client->id,
                 'amount' => 1000,
                 'method' => 'GCash',
-                'reference' => 'gcash-'.now()->timestamp,
+                'reference' => 'gcash-' . now()->timestamp,
                 'paid_at' => now(),
+            ]);
+
+            // Update client status
+            $client->update([
+                'payment_status' => 'Paid',
+                'block_status' => 'Unblocked',
+                'next_due_date' => now()->addDays(30),
             ]);
 
             return redirect()->route('client.dashboard')->with('success', 'Payment received!');
@@ -43,6 +56,4 @@ Route::middleware(['auth:client'])->group(function () {
 
         return redirect()->route('login')->with('error', 'Session expired.');
     })->name('client.renew.callback');
-    Route::get('/client/receipt/{payment}', Receipt::class)->name('receipt.print');
-
 });

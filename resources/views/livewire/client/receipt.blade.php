@@ -1,7 +1,7 @@
 <div class="max-w-lg mx-auto p-8 bg-white shadow-2xl rounded-lg border" id="printable-receipt">
     {{-- Logo --}}
     <div class="flex justify-center mb-6">
-        <img src="{{ asset('flat_connect_logo.png') }}" alt="FlatConnect Logo" class="h-16">
+        <img src="{{ asset('flat_connect_blue.png') }}" alt="FlatConnect Logo" class="h-16">
     </div>
 
     <h2 class="text-2xl font-semibold text-center text-gray-800 mb-4 tracking-wide">Official Payment Receipt</h2>
