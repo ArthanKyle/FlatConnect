@@ -21,6 +21,7 @@ class Register extends Component
     public string $password_confirmation = '';
     public ?string $mac_address = null;
     public string $error = '';
+    public string $website = ''; 
 
     public function mount()
     {
@@ -53,6 +54,10 @@ class Register extends Component
 
     public function register()
     {
+        if (!empty($this->website)) {
+            abort(403, 'Bot detected. GTFO.');
+        }
+        
         $this->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
