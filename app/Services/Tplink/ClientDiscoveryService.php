@@ -9,19 +9,16 @@ use Illuminate\Support\Facades\Log;
 
 class ClientDiscoveryService
 {
-    protected string $baseUrl = 'http://192.168.1.11';
-
+    protected string $baseUrl;
     protected CookieJar $cookieJar;
 
     public function __construct()
     {
+        $this->baseUrl = config('tplink.base_url');
         $this->cookieJar = new CookieJar;
     }
 
-    // Attempt to login to the TP-Link controller
     /**
-     * Attempt to login to the TP-Link controller.
-     */
     public function login(): bool
     {
         Log::info('Attempting to login to TP-Link controller at '.$this->baseUrl);
@@ -39,8 +36,8 @@ class ClientDiscoveryService
             ])
             ->asForm()
             ->post($this->baseUrl.'/', [
-                'username' => 'AdminExistentialCrisis',
-                'password' => '66E652DD4948E20796A7B37C64FC0079',
+                'username' => config('tplink.username'),
+                'password' => config('tplink.password'),
             ]);
 
         if ($response->successful()) {

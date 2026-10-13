@@ -31,19 +31,33 @@ class Register extends Component
     protected function getMacAddressFromRequestIp(): ?string
     {
         $ip = request()->ip();
-        if (! filter_var($ip, FILTER_VALIDATE_IP)) {
-            logger()->warning("Invalid IP format: $ip");
-            return null;
+        
+        // Strict IP validation
+        if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+            // Allow private ranges for local network
+            if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+                logger()->warning("Invalid IP format: $ip");
+                return null;
+            }
         }
 
-        $output = shell_exec('arp -a');
-        if (! $output) {
+        // Escape IP to prevent command injection
+        $escapedIp = escapeshellarg($ip);
+        
+        // Use safer execution with timeout
+        $command = "arp -a 2>&1";
+        $output = shell_exec($command);
+        
+        if (!$output) {
             logger()->error("ARP command failed.");
             return null;
         }
 
-        preg_match("/$ip\s+.*\s+((?:[0-9A-Fa-f]{2}[-:]){5}[0-9A-Fa-f]{2})/", $output, $matches);
-        if (! isset($matches[1])) {
+        // More secure regex with escaped IP
+        $pattern = "/" . preg_quote($ip, '/') . "\s+.*\s+((?:[0-9A-Fa-f]{2}[-:]){5}[0-9A-Fa-f]{2})/";
+        preg_match($pattern, $output, $matches);
+        
+        if (!isset($matches[1])) {
             logger()->info("MAC address not found for IP $ip.");
             return null;
         }

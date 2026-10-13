@@ -27,4 +27,16 @@ class PayMongoService
 
         return $response->json();
     }
+
+    public function verifySource($sourceId)
+    {
+        $response = Http::withBasicAuth(env('PAYMONGO_SECRET_KEY'), '')
+            ->get("{$this->baseUrl}/sources/{$sourceId}");
+
+        if ($response->successful()) {
+            return $response->json();
+        }
+
+        return null;
+    }
 }

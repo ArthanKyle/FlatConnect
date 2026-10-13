@@ -11,19 +11,24 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // Global security headers
+        $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
+        
         $middleware->append([
             \App\Http\Middleware\TrustProxies::class,
-
         ]);
+        
         $middleware->alias([
             'staff' => \App\Http\Middleware\StaffMiddleware::class,
             'client' => \App\Http\Middleware\ClientMiddleware::class,
             'client.verified' => \App\Http\Middleware\EnsureClientEmailIsVerified::class,
+            'validate.mac' => \App\Http\Middleware\ValidateMacAddress::class,
         ]);
     })
     ->withCommands([
-        \App\Console\Commands\BlockOverdueClients::class,
-        \App\Console\Commands\ListOverdueClients::class,
+        \App\Console\Commands\EnforceBlockClients::class,
+        \App\Console\Commands\SecurityAudit::class,
+        \App\Console\Commands\RotateAppKey::class,
     ])
     ->withExceptions(function (Exceptions $exceptions) {
         //
